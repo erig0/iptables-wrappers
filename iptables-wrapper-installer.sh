@@ -91,30 +91,8 @@ else
     mode=nft
 fi
 
-# Replace the wrapper scripts with the real binaries
-if [ -x /usr/sbin/alternatives ]; then
-    # Fedora/SUSE style
-    alternatives --set iptables "/usr/sbin/iptables-${mode}" > /dev/null || failed=1
-elif [ -x /usr/sbin/update-alternatives ]; then
-    # Debian style
-    update-alternatives --set iptables "/usr/sbin/iptables-${mode}" > /dev/null || failed=1
-    update-alternatives --set ip6tables "/usr/sbin/ip6tables-${mode}" > /dev/null || failed=1
-else
-    # No alternatives system
-    for cmd in iptables iptables-save iptables-restore ip6tables ip6tables-save ip6tables-restore; do
-        rm -f "/usr/sbin/${cmd}"
-        ln "/usr/sbin/xtables-${mode}-multi" "/usr/sbin/${cmd}"
-    done 2>/dev/null || failed=1
-fi
-
-if [ "${failed}" = 1 ]; then
-    echo "Unable to redirect iptables binaries. (Are you running in an unprivileged pod?)" 1>&2
-    # fake it, though this will probably also fail if they aren't root
-    exec "/usr/sbin/xtables-${mode}-multi" "$0" "$@"
-fi
-
 # Now re-exec the original command with the newly-selected alternative
-exec "$0" "$@"
+exec "${0%wrapper*}${mode}${0#*wrapper}" "$@"
 EOF
 
 # Link the wrapper
